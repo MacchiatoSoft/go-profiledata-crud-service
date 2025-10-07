@@ -1,48 +1,30 @@
 package main
 
 import (
-	"encoding/json"
-	"log"
-	"net/http"
+    "log"
+    "net/http"
+    "os"
 
-	"github.com/macchiatosoft/go-profiledata-crud-service/database"
+    "github.com/macchiatosoft/go-profiledata-crud-service/database"
+    "github.com/macchiatosoft/go-profiledata-crud-service/handler"
 )
 
-var db *database.DB
-
 func main() {
-	var err error
-	db, err = database.Connect()
+	db, err := database.Connect()
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
+	env := &handler.Env{
+        DB: db,
+        Port: os.Getenv("PORT"),
+        Host: os.Getenv("HOST"),
+        // We might also have a custom log.Logger, our template instance, and a config struct as fields
+    }
 	defer db.Close()
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /users/{username}", getUserHandler)
-	log.Println("Server starting on :8080")
-	log.Fatal(http.ListenAndServe(":8080", mux))
+	mux.Handle("GET /user/{email}", handler.Handler{env, handler.GetUser})
+	log.Println("Server starting on" + env.Port)
+	log.Fatal(http.ListenAndServe(":"+env.Port, mux))
 }
 
-func getUserHandler(w http.ResponseWriter, r *http.Request) {
-	username := r.PathValue("username")
-
-	if username == "" {
-		http.Error(w, "Username required", http.StatusBadRequest)
-		return
-	}
-
-	user, err := db.GetUserByUsername(username)
-
-	if err != nil {
-		http.Error(w, "User not found", http.StatusNotFound)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-
-	if err := json.NewEncoder(w).Encode(user); err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-		return
-	}
-}

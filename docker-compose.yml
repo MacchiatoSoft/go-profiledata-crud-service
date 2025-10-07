@@ -2,11 +2,13 @@ services:
   server:
     build: .
     ports:
-      - "8080:8080"
+      - "${PORT}:${PORT}"
     environment:
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_NAME=${DB_NAME}
+      - PORT=${PORT}
+      - HOST=${HOST}
     depends_on:
       db:
         condition: service_healthy
